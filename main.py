@@ -1,23 +1,21 @@
 from dataclasses import dataclass
-import pygame
-import sys
-from typing import List
-import heapq
 from math import sqrt
-from dataclasses import dataclass
-
-# Configuration
-SCREEN_SIZE = 600
-GRID_SIZE = 20
-CELL_SIZE = SCREEN_SIZE // GRID_SIZE
+from typing import List
+import argparse
+import heapq
+import pygame
+import random
+import sys
 
 #Colors 
 GRAY = (30, 30, 30)
+MID_GRAY = (50, 50, 50)
 LIGHT_GRAY = (100, 100, 100)
 LIGHT_BLUE = (90,185,209)
 RED = (200, 50, 50)
-GREEN = (127,186,103)
-YELLOW = (255, 255, 0)
+LIGHT_GREEN = (157,216,123)
+GREEN = (107,166, 83)
+ORANGE = (255, 155, 0)
     
 @dataclass
 class Position:
@@ -30,7 +28,7 @@ class Node:
     position: Position
     g: float = float('inf')
     h: float = 0.0
-    parent = None
+    parent: 'Node' = None
     
     @property   
     def f(self) -> float:
@@ -91,12 +89,11 @@ def a_star(initial_position: Position, blocked_tiles: set, goal_position: Positi
         current_node = heapq.heappop(open_list)
         
         if current_node == goal_node:# reach the end
-            return reconstruct_path(current_node)
+            return reconstruct_path(current_node), list(visited.keys())
         
         for neighbor in get_valid_neighbors(current_node.position, blocked_tiles):
             dist = calculate_heuristic(current_node.position, neighbor)
             tentative_g = current_node.g + dist
-            print(neighbor)
             
             neighbor_position = (neighbor.x, neighbor.y)
             if neighbor_position not in visited or tentative_g < visited[neighbor_position]:
@@ -146,7 +143,7 @@ class Drone():
     return f"Drone Path: {self.path}"
 
 
-def draw_environment(screen, obstacles, initial_position, drone, goal):
+def draw_environment(screen, obstacles, initial_position, drone, goal, path=None, explored=None):
   screen.fill(GRAY)
 
   #GRID
@@ -155,6 +152,17 @@ def draw_environment(screen, obstacles, initial_position, drone, goal):
   for y in range(0, SCREEN_SIZE, CELL_SIZE):
       pygame.draw.line(screen, LIGHT_GRAY, (0, y), (SCREEN_SIZE, y))
       
+  if explored:
+        for x, y in explored:
+            rect = pygame.Rect(x * CELL_SIZE + 2, y * CELL_SIZE + 2, CELL_SIZE-4, CELL_SIZE-4)
+            pygame.draw.rect(screen, MID_GRAY, rect)
+                
+  if path:
+        for pos in path:
+            rect = pygame.Rect(pos.x * CELL_SIZE + 2, pos.y * CELL_SIZE + 2, 
+                               CELL_SIZE - 4, CELL_SIZE - 4)
+            pygame.draw.rect(screen, LIGHT_GREEN, rect)
+            
   for obs in obstacles:
       obstacle_pixel_x = obs.center[0] * CELL_SIZE + CELL_SIZE // 2
       obstacle_pixel_y = obs.center[1] * CELL_SIZE + CELL_SIZE // 2
@@ -162,18 +170,34 @@ def draw_environment(screen, obstacles, initial_position, drone, goal):
     
   initial_position_pixel_x = initial_position.x * CELL_SIZE + CELL_SIZE // 2
   initial_position_pixel_y = initial_position.y * CELL_SIZE + CELL_SIZE // 2
-  pygame.draw.circle(screen, YELLOW, (initial_position_pixel_x, initial_position_pixel_y), CELL_SIZE // 2)
+  pygame.draw.circle(screen, ORANGE, (initial_position_pixel_x, initial_position_pixel_y), CELL_SIZE // 3)
   
   goal_pixel_x = goal.x * CELL_SIZE + CELL_SIZE // 2
   goal_pixel_y = goal.y * CELL_SIZE + CELL_SIZE // 2
-  pygame.draw.circle(screen, GREEN, (goal_pixel_x, goal_pixel_y), CELL_SIZE // 2)
+  pygame.draw.circle(screen, GREEN, (goal_pixel_x, goal_pixel_y), CELL_SIZE // 3)
   
   pygame.draw.polygon(screen, drone.color, drone.draw_drone())
       
+def get_conf_random(grid_size=30, num_obstacles=15):
+    obs = []
+    for _ in range(num_obstacles):
+        x = random.randint(2, grid_size - 3)
+        y = random.randint(2, grid_size - 3)
+        r = random.uniform(0.5, 2.5)
+        obs.append(Obstacle(x, y, r))
+    
+    return {
+        "grid_size": grid_size,
+        "obstacles": obs,
+        "initial_position": Position(0, 0, 0),
+        "goal": Position(grid_size - 1, grid_size - 1, 0)
+    }
 
-def main(obstacles = (0,0), 
-         initial_position = Position(0,0,0), 
-         goal = Position(1,1,0)):
+def main(grid_size=10, obstacles=[], initial_position=Position(0,0,0), goal=Position(1,1,0), no_anim=False):
+    global GRID_SIZE, CELL_SIZE, SCREEN_SIZE
+    GRID_SIZE = grid_size
+    SCREEN_SIZE = 600
+    CELL_SIZE = SCREEN_SIZE // GRID_SIZE
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.set_caption("Drone Pathfinding Test")
@@ -186,10 +210,25 @@ def main(obstacles = (0,0),
         for tile in obs.occupied_tiles:
             blocked_tiles.add(tile)
             
-    best_path = a_star(initial_position, blocked_tiles, goal)       
+    best_path, explored = a_star(initial_position, blocked_tiles, goal)       
     last_move_time = pygame.time.get_ticks() 
     delay = 400 
     i=0
+    
+    # Animation indices
+    current_visible_explored = []
+    current_visible_path = []
+    if no_anim:
+        current_visible_explored = explored
+        current_visible_path = best_path
+        explored_idx = len(explored)
+        path_idx = len(best_path)
+    else:    
+        explored_idx = 0
+        path_idx = 0
+    anim_timer = pygame.time.get_ticks()
+    anim_delay = 100
+    
     while True: 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -197,17 +236,78 @@ def main(obstacles = (0,0),
                 sys.exit()
         
         current_time = pygame.time.get_ticks()
-        if current_time - last_move_time > delay:
+        
+        if current_time - anim_timer > anim_delay:
+            # First, animate the search (explored tiles)
+            if explored_idx < len(explored):
+                current_visible_explored.append(explored[explored_idx])
+                explored_idx += 1
+                anim_timer = current_time
+            
+            # Once search is done, animate the final path
+            elif path_idx < len(best_path):
+                current_visible_path.append(best_path[path_idx])
+                path_idx += 1
+                anim_timer = current_time
+            
+        if current_time - last_move_time > delay and path_idx == len(best_path):
           if i < len(best_path):
             drone.position = best_path[i]
             i+=1
           last_move_time = current_time
       
-        draw_environment(screen, obstacles, initial_position, drone, goal)
+        draw_environment(screen, obstacles, initial_position, drone, goal, current_visible_path, current_visible_explored)
         pygame.display.flip()
         clock.tick(60)
+    
+# GRID_SIZE = 10
+conf_easy = {
+    "grid_size": 10,
+    "obstacles": [Obstacle(3, 3, 1), Obstacle(5, 5, 0.5), Obstacle(7, 3, 1.5)],
+    "initial_position": Position(0, 0, 0),
+    "goal": Position(9, 9, 0)
+}
 
+# GRID_SIZE = 20
+conf_medium = {
+    "grid_size": 20,
+    "obstacles": [
+        Obstacle(3, 3, 1), Obstacle(5, 5, 0.5), Obstacle(7, 3, 1.5),
+        Obstacle(12, 15, 4), Obstacle(3, 14, 3), Obstacle(16, 8, 1.5)
+    ],
+    "initial_position": Position(0, 0, 0),
+    "goal": Position(19, 19, 0)
+}
+
+# GRID_SIZE = 40
+conf_hard = {
+    "grid_size": 40,
+    "obstacles": [
+        Obstacle(5, 5, 2), Obstacle(15, 5, 3), Obstacle(25, 15, 4),
+        Obstacle(10, 25, 3), Obstacle(30, 30, 5), Obstacle(12, 15, 2),
+        Obstacle(35, 10, 2), Obstacle(5, 35, 2)
+    ],
+    "initial_position": Position(0, 0, 0),
+    "goal": Position(39, 39, 0)
+}
+ 
 if __name__ == "__main__":
-    main(obstacles=[Obstacle(3, 3, 1), Obstacle(5, 5, 0.5), Obstacle(7, 3, 1.5), Obstacle(12, 15, 4), Obstacle(3, 14, 3), Obstacle(16, 8, 1.5)],
-         initial_position=Position(0,0,0),
-         goal=Position(19,19,0))
+    parser = argparse.ArgumentParser(description="Drone Pathfinding Simulation")
+    parser.add_argument(
+        "config", 
+        nargs="?", 
+        default="easy", 
+        choices=["easy", "medium", "hard", "random"],
+        help="The configuration difficulty to run (default: easy)"
+    )
+    parser.add_argument("--no-anim", action="store_true", 
+                        help="Skip the step-by-step pathfinding animation")
+    args = parser.parse_args()
+    configs = {
+        "easy": conf_easy,
+        "medium": conf_medium,
+        "hard": conf_hard,
+        "random": get_conf_random(grid_size=30, num_obstacles=20)
+    }
+    selected_conf = configs[args.config]
+    main(**selected_conf, no_anim=args.no_anim)
