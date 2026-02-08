@@ -121,9 +121,7 @@ def get_catmull_rom_point(
     return (x, y)
 
 
-def generate_smooth_path(
-    path: List[Node], points_per_segment: int = 20
-) -> List[Node]:
+def generate_smooth_path(path: List[Node], points_per_segment: int = 20) -> List[Node]:
     if len(path) < 2:
         return path
 
@@ -134,29 +132,31 @@ def generate_smooth_path(
     coords.append(coords[-1])
 
     smooth_nodes: List[Node] = []
-    
+
     # Generate interpolated nodes
     for i in range(1, len(coords) - 2):
         p0, p1, p2, p3 = coords[i - 1], coords[i], coords[i + 1], coords[i + 2]
-        
-        g_start, h_start = path[i-1].g, path[i-1].h
+
+        g_start, h_start = path[i - 1].g, path[i - 1].h
         g_end, h_end = path[i].g, path[i].h
 
         for j in range(points_per_segment):
             t = j / points_per_segment
             x, y = get_catmull_rom_point(p0, p1, p2, p3, t)
-            
+
             new_node = Node(position=Position(x=x, y=y))
             new_node.g = int(g_start + (g_end - g_start) * t)
             new_node.h = int(h_start + (h_end - h_start) * t)
-            
+
             smooth_nodes.append(new_node)
 
     final_node = path[-1]
-    smooth_nodes.append(Node(
-        position=Position(x=final_node.position.x, y=final_node.position.y),
-        g=final_node.g,
-        h=final_node.h
-    ))
+    smooth_nodes.append(
+        Node(
+            position=Position(x=final_node.position.x, y=final_node.position.y),
+            g=final_node.g,
+            h=final_node.h,
+        )
+    )
 
     return smooth_nodes

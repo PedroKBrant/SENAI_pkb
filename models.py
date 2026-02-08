@@ -43,6 +43,7 @@ class Node:
         pos_str = f"({self.position.x:.2f}, {self.position.y:.2f}, {self.position.theta:.1f}°)"
         return f"Node(pos={pos_str}, f={self.f/1000}, g={self.g/1000}, h={self.h/1000})"
 
+
 class Obstacle:
     def __init__(self, x: int, y: int, radius: float):
         self.center = (x, y)

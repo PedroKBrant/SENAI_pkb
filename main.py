@@ -82,7 +82,7 @@ def main(
     best_path, explored = a_star(initial_position, blocked, goal, config, heuristic)
 
     if best_path:
-        points_per_segment=15
+        points_per_segment = 15
         smooth_path = generate_smooth_path(best_path, points_per_segment)
         drone.path = calculate_theta(smooth_path)
         total_steps, tiles_visited = Drone.get_path_statistics(best_path)
@@ -92,7 +92,7 @@ def main(
         print(f"Total Trajectory Steps: {total_steps}")
         print(f"Path Tiles: {tiles_visited}")
         print("-" * 30)
-        print(drone.get_summary_string(points_per_segment//3))
+        print(drone.get_summary_string(points_per_segment // 3))
 
         run_animation(
             screen,
@@ -183,14 +183,14 @@ if __name__ == "__main__":
             obs.append(Obstacle(x, y, r))
 
         choice = random.choice(["right", "bottom"])
-            
+
         if choice == "right":
             goal_x = random.randint(25, grid_size - 1)
             goal_y = random.randint(0, grid_size - 1)
         else:
             goal_x = random.randint(0, grid_size - 1)
             goal_y = random.randint(25, grid_size - 1)
-            
+
         return {
             "grid_size": grid_size,
             "obstacles": obs,

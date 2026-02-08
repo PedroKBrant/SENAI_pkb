@@ -28,7 +28,7 @@ class Drone:
             return "Drone - No path"
         nodes = "\n".join([f" Step {i}: {n}" for i, n in enumerate(self.path)])
         return f"Drone Path [{len(self.path)} steps]:\n{nodes}"
-    
+
     def get_summary_path(self, step_size: int):
         return self.path[::step_size]
 
@@ -38,10 +38,15 @@ class Drone:
             [f"  Waypoint {i}: {node}" for i, node in enumerate(summary_nodes)]
         )
         return f"Drone Path Summary ({len(summary_nodes)} Waypoints):\n{detailed_nodes}"
-    
+
     def get_path_statistics(smooth_path: List[Node]):
         total_steps = len(smooth_path)
-        unique_tiles = list({(int(round(n.position.x)), int(round(n.position.y))): None for n in smooth_path}.keys())
+        unique_tiles = list(
+            {
+                (int(round(n.position.x)), int(round(n.position.y))): None
+                for n in smooth_path
+            }.keys()
+        )
         return total_steps, unique_tiles
 
 
