@@ -95,7 +95,8 @@ def a_star(
 
     while open_list:
         current_node = heapq.heappop(open_list)
-
+        print("pop heap")
+        print(current_node)
         if current_node == goal_node:  # reach the end
             return reconstruct_path(current_node), list(visited.keys())
 
@@ -109,7 +110,6 @@ def a_star(
                 or tentative_g < visited[neighbor_position]
             ):
                 visited[neighbor_position] = tentative_g
-                # neighbor_node = Node(position=neighbor.position)
                 neighbor.g = tentative_g
                 neighbor.h = calculate_heuristic(neighbor.position, goal_position)
                 neighbor.parent = current_node
@@ -152,8 +152,13 @@ class Drone:
         ]
         return points
 
-    def __repr__(self):
-        return f"Drone Path: {self.path}"
+    def __repr__(self) -> str:
+        if not self.path:
+            return f"Drone at ({self.position.x}, {self.position.y}) - No path assigned."
+
+        detailed_nodes = "\n".join([f"  Step {i}: {node}" for i, node in enumerate(self.path)])
+        summary = f"Drone Path [{len(self.path)} steps]:"
+        return f"{summary}\n{detailed_nodes}"
 
 
 def draw_environment(
@@ -321,11 +326,10 @@ def main(
     best_path, explored = a_star(initial_position, blocked_tiles, goal)
     print("Explored Nodes:", explored)
     print("Total Nós visitados", len(explored))
-
+    
     if best_path:
-        print("Best Path")
-        for node in best_path:
-            print(node)
+        drone.path = best_path
+        print(drone)
         run_animation(
             screen,
             clock,
