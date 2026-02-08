@@ -20,24 +20,26 @@ ORANGE = (255, 155, 0)
 
 @dataclass
 class Position:
-    x: float = 0.0
-    y: float = 0.0
+    x: int = 0
+    y: int = 0
     theta: float = 0.0
 
 
 @dataclass
 class Node:
     position: Position
-    g: float = float("inf")
-    h: float = 0.0
+    g: int = 1_000_000_000
+    h: int = 0
     parent: "Node" = None
 
     @property
-    def f(self) -> float:
+    def f(self) -> int:
         return self.g + self.h
 
     # heap
     def __lt__(self, other):
+        if self.f == other.f:
+            return self.h < other.h  # Tie-breaker: pick the one closer to goal
         return self.f < other.f
 
     def __eq__(self, other):
@@ -48,13 +50,19 @@ class Node:
         ) == int(other.position.y)
 
     def __repr__(self):
-        return f"Node(pos={self.position.x, self.position.y, self.position.theta}, f={self.f:.2f}, g={self.g:.2f}, h={self.h:.2f})"
+        return f"Node(pos={self.position.x, self.position.y, self.position.theta}, f={self.f:}, g={self.g:}, h={self.h:})"
 
 
-def calculate_heuristic(curr: Position, goal: Position) -> float:
-    # Euclidean Distance
-    return sqrt((curr.x - goal.x) ** 2 + (curr.y - goal.y) ** 2)
-
+def calculate_heuristic(curr: Position, goal: Position, method: str ="octile") -> int:
+    #https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
+    dx = abs(curr.x - goal.x)
+    dy = abs(curr.y - goal.y)
+    if method == "octile":
+        # Integer Octile: (Straight=1000, Diagonal=1414)
+        return 1000 * (dx + dy) + (1414 - 2000) * min(dx, dy)
+    else:
+        # Integer Euclidean:
+        return int(sqrt(dx**2 + dy**2) * 1000)
 
 def get_valid_neighbors(current_pos: Node, blocked_tiles: set) -> List[Node]:
     neighbors = []
@@ -82,7 +90,7 @@ def reconstruct_path(goal: Node) -> List[Node]:
 
 
 def a_star(
-    initial_position: Position, blocked_tiles: set, goal_position: Position
+    initial_position: Position, blocked_tiles: set, goal_position: Position, heuristic_method: str = "octile"
 ) -> Tuple[List[Node], List[tuple]]:
     initial_node = Node(initial_position)
     initial_node.g = 0
@@ -260,7 +268,7 @@ def run_animation(
     move_timer = pygame.time.get_ticks()
 
     ANIM_DELAY = 20 if not no_anim else 0
-    DRONE_DELAY = 400
+    DRONE_DELAY = 200
 
     while True:
         current_time = pygame.time.get_ticks()
@@ -307,6 +315,7 @@ def main(
     initial_position: Position,
     goal: Position,
     no_anim: bool = False,
+    heuristic: str = "octile"
 ) -> None:
     global GRID_SIZE, CELL_SIZE, SCREEN_SIZE
     GRID_SIZE = grid_size
@@ -323,7 +332,7 @@ def main(
     )
     blocked_tiles = {tile for obs in obstacles for tile in obs.occupied_tiles}
 
-    best_path, explored = a_star(initial_position, blocked_tiles, goal)
+    best_path, explored = a_star(initial_position, blocked_tiles, goal, heuristic)
     print("Explored Nodes:", explored)
     print("Total Nós visitados", len(explored))
     
@@ -401,6 +410,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Skip the step-by-step pathfinding animation",
     )
+    parser.add_argument(
+        "--heuristic",
+        default="octile",
+        choices=["octile", "euclidean"],
+        help="The heuristic method to use (default: octile)",
+    )
     args = parser.parse_args()
     configs = {
         "easy": conf_easy,
@@ -409,4 +424,4 @@ if __name__ == "__main__":
         "random": get_conf_random(grid_size=30, num_obstacles=20),
     }
     selected_conf = configs[args.config]
-    main(**selected_conf, no_anim=args.no_anim)
+    main(**selected_conf, no_anim=args.no_anim, heuristic=args.heuristic)
