@@ -28,6 +28,21 @@ class Drone:
             return "Drone - No path"
         nodes = "\n".join([f" Step {i}: {n}" for i, n in enumerate(self.path)])
         return f"Drone Path [{len(self.path)} steps]:\n{nodes}"
+    
+    def get_summary_path(self, step_size: int):
+        return self.path[::step_size]
+
+    def get_summary_string(self, step_size: int) -> str:
+        summary_nodes = self.get_summary_path(step_size)
+        detailed_nodes = "\n".join(
+            [f"  Waypoint {i}: {node}" for i, node in enumerate(summary_nodes)]
+        )
+        return f"Drone Path Summary ({len(summary_nodes)} Waypoints):\n{detailed_nodes}"
+    
+    def get_path_statistics(smooth_path: List[Node]):
+        total_steps = len(smooth_path)
+        unique_tiles = list({(int(round(n.position.x)), int(round(n.position.y))): None for n in smooth_path}.keys())
+        return total_steps, unique_tiles
 
 
 def draw_environment(
@@ -39,6 +54,7 @@ def draw_environment(
     config: MapConfig,
     path: List[Node] = None,
     explored: List[tuple] = None,
+    smooth_path=None,
 ) -> None:
     screen.fill(GRAY)
     for x in range(0, 600, config.cell_size):
@@ -58,18 +74,29 @@ def draw_environment(
                     config.cell_size - 4,
                 ),
             )
-    if path:
-        for n in path:
-            pygame.draw.rect(
-                screen,
-                LIGHT_GREEN,
-                (
-                    n.position.x * config.cell_size + 2,
-                    n.position.y * config.cell_size + 2,
-                    config.cell_size - 4,
-                    config.cell_size - 4,
-                ),
+
+    if path and len(path) > 1:
+        raw_points = [
+            (
+                n.position.x * config.cell_size + config.cell_size // 2,
+                n.position.y * config.cell_size + config.cell_size // 2,
             )
+            for n in path
+        ]
+        pygame.draw.lines(screen, LIGHT_GRAY, False, raw_points, 5)
+
+        for p in raw_points:
+            pygame.draw.circle(screen, LIGHT_GRAY, p, 3)
+
+    if smooth_path and len(smooth_path) > 1:
+        smooth_points = [
+            (
+                node.position.x * config.cell_size + config.cell_size // 2,
+                node.position.y * config.cell_size + config.cell_size // 2,
+            )
+            for node in smooth_path
+        ]
+        pygame.draw.lines(screen, LIGHT_BLUE, False, smooth_points, 3)
 
     for obs in obstacles:
         pygame.draw.circle(

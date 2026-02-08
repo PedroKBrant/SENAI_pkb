@@ -11,8 +11,8 @@ class MapConfig:
 
 @dataclass
 class Position:
-    x: int = 0
-    y: int = 0
+    x: float = 0.0
+    y: float = 0.0
     theta: float = 0.0
 
 
@@ -40,8 +40,8 @@ class Node:
         ) == int(other.position.y)
 
     def __repr__(self):
-        return f"Node(pos={self.position.x, self.position.y, self.position.theta}, f={self.f})"
-
+        pos_str = f"({self.position.x:.2f}, {self.position.y:.2f}, {self.position.theta:.1f}°)"
+        return f"Node(pos={pos_str}, f={self.f/1000}, g={self.g/1000}, h={self.h/1000})"
 
 class Obstacle:
     def __init__(self, x: int, y: int, radius: float):

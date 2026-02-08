@@ -1,9 +1,9 @@
 import pygame, sys, argparse, random
 from constants import *
 from models import Position, Obstacle, MapConfig, Node
-from algorithms import a_star, calculate_theta
+from algorithms import a_star, calculate_theta, generate_smooth_path
 from visuals import Drone, draw_environment
-from typing import List
+from typing import List, Tuple
 
 
 def run_animation(
@@ -15,6 +15,7 @@ def run_animation(
     goal: Position,
     config: MapConfig,
     best_path: List[Node],
+    smooth_path: List[Tuple[float, float]],
     explored: List[tuple],
     no_anim: bool = False,
 ):
@@ -41,10 +42,11 @@ def run_animation(
             path_idx += 1
             anim_timer = curr_time
 
-        elif drone_idx < len(best_path) and curr_time - move_timer > 200:
-            drone.position = best_path[drone_idx].position
-            drone_idx += 1
-            move_timer = curr_time
+        elif drone_idx < len(smooth_path):
+            if curr_time - move_timer > 40:
+                drone.position = smooth_path[drone_idx].position
+                drone_idx += 1
+                move_timer = curr_time
 
         draw_environment(
             screen,
@@ -55,6 +57,7 @@ def run_animation(
             config,
             visible_path,
             visible_explored,
+            smooth_path,
         )
         pygame.display.flip()
         clock.tick(60)
@@ -76,11 +79,21 @@ def main(
     drone = Drone(Position(initial_position.x, initial_position.y))
     blocked = {t for obs in obstacles for t in obs.occupied_tiles}
 
-    path, explored = a_star(initial_position, blocked, goal, config, heuristic)
+    best_path, explored = a_star(initial_position, blocked, goal, config, heuristic)
 
-    if path:
-        drone.path = calculate_theta(path)
-        print(drone)
+    if best_path:
+        points_per_segment=15
+        smooth_path = generate_smooth_path(best_path, points_per_segment)
+        drone.path = calculate_theta(smooth_path)
+        total_steps, tiles_visited = Drone.get_path_statistics(best_path)
+        print("-" * 30)
+        print(f"DRONE MISSION SUMMARY")
+        print("-" * 30)
+        print(f"Total Trajectory Steps: {total_steps}")
+        print(f"Path Tiles: {tiles_visited}")
+        print("-" * 30)
+        print(drone.get_summary_string(points_per_segment//3))
+
         run_animation(
             screen,
             clock,
@@ -89,7 +102,8 @@ def main(
             initial_position,
             goal,
             config,
-            path,
+            best_path,
+            smooth_path,
             explored,
             no_anim,
         )
@@ -101,6 +115,7 @@ def main(
             initial_position,
             drone,
             goal,
+            config,
             explored=explored,
         )
         pygame.display.flip()
@@ -123,7 +138,7 @@ if __name__ == "__main__":
 
     conf_easy = {
         "grid_size": 10,
-        "obstacles": [Obstacle(3, 3, 1), Obstacle(5, 5, 0.5), Obstacle(7, 3, 1.5)],
+        "obstacles": [Obstacle(2, 2, 1), Obstacle(5, 5, 0.5), Obstacle(3, 7, 1.5)],
         "initial_position": Position(0, 0, 0),
         "goal": Position(9, 9, 0),
     }
@@ -131,9 +146,9 @@ if __name__ == "__main__":
     conf_medium = {
         "grid_size": 20,
         "obstacles": [
-            Obstacle(3, 3, 1),
+            Obstacle(2, 2, 1),
             Obstacle(5, 5, 0.5),
-            Obstacle(7, 3, 1.5),
+            Obstacle(3, 7, 1.5),
             Obstacle(12, 15, 4),
             Obstacle(3, 14, 3),
             Obstacle(16, 8, 1.5),
@@ -161,16 +176,26 @@ if __name__ == "__main__":
     def get_conf_random(grid_size=30, num_obstacles=15):
         obs = []
         for _ in range(num_obstacles):
-            x = random.randint(2, grid_size - 3)
-            y = random.randint(2, grid_size - 3)
-            r = random.uniform(0.5, 2.5)
+            x = random.randint(3, grid_size - 7)
+            y = random.randint(3, grid_size - 7)
+            allowed_values = [0.5, 1.0, 1.5, 2.0]
+            r = random.choice(allowed_values)
             obs.append(Obstacle(x, y, r))
 
+        choice = random.choice(["right", "bottom"])
+            
+        if choice == "right":
+            goal_x = random.randint(25, grid_size - 1)
+            goal_y = random.randint(0, grid_size - 1)
+        else:
+            goal_x = random.randint(0, grid_size - 1)
+            goal_y = random.randint(25, grid_size - 1)
+            
         return {
             "grid_size": grid_size,
             "obstacles": obs,
             "initial_position": Position(0, 0, 0),
-            "goal": Position(grid_size - 1, grid_size - 1, 0),
+            "goal": Position(goal_x, goal_y, 0),
         }
 
     configs = {
