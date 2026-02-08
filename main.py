@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from math import sqrt
 from typing import List, Tuple
 import argparse
 import heapq
+import math
 import pygame
 import random
 import sys
@@ -62,7 +62,7 @@ def calculate_heuristic(curr: Position, goal: Position, method: str = "octile") 
         return 1000 * (dx + dy) + (1414 - 2000) * min(dx, dy)
     else:
         # Integer Euclidean:
-        return int(sqrt(dx**2 + dy**2) * 1000)
+        return int(math.sqrt(dx**2 + dy**2) * 1000)
 
 
 def get_valid_neighbors(current_pos: Node, blocked_tiles: set) -> List[Node]:
@@ -152,17 +152,27 @@ class Drone:
         self.done = False
         self.color = LIGHT_BLUE
 
-    def draw_drone(self):
+    def get_rotated_points(self):
         center_x = self.position.x * CELL_SIZE + CELL_SIZE // 2
         center_y = self.position.y * CELL_SIZE + CELL_SIZE // 2
         size = CELL_SIZE // 3
 
-        points = [
-            (center_x, center_y - size),
-            (center_x - size, center_y + size),
-            (center_x + size, center_y + size),
+        base_points = [
+            (0, -size),  # Tip
+            (-size // 1.2, size),  # Bottom Left
+            (size // 1.2, size),  # Bottom Right
         ]
-        return points
+        rad = math.radians(self.position.theta + 90)
+        cos_a = math.cos(rad)
+        sin_a = math.sin(rad)
+
+        rotated = []
+        for px, py in base_points:
+            rotation_x = px * cos_a - py * sin_a
+            rotation_y = px * sin_a + py * cos_a
+            rotated.append((center_x + rotation_x, center_y + rotation_y))
+
+        return rotated
 
     def __repr__(self) -> str:
         if not self.path:
@@ -231,7 +241,7 @@ def draw_environment(
     goal_pixel_y = goal.y * CELL_SIZE + CELL_SIZE // 2
     pygame.draw.circle(screen, GREEN, (goal_pixel_x, goal_pixel_y), CELL_SIZE // 3)
 
-    pygame.draw.polygon(screen, drone.color, drone.draw_drone())
+    pygame.draw.polygon(screen, drone.color, drone.get_rotated_points())
 
 
 def get_conf_random(grid_size=30, num_obstacles=15):
@@ -317,6 +327,24 @@ def run_animation(
         clock.tick(60)
 
 
+def calculate_theta(path: List[Node]) -> List[Node]:
+    if len(path) < 2:
+        return path
+    for i in range(len(path)):
+        current_node = path[i]
+        if i < len(path) - 1:
+            next_node = path[i + 1]
+            dx = next_node.position.x - current_node.position.x
+            dy = next_node.position.y - current_node.position.y
+
+            angle_rad = math.atan2(dy, dx)
+            current_node.position.theta = math.degrees(angle_rad)
+        else:  # last
+            current_node.position.theta = path[i - 1].position.theta
+
+    return path
+
+
 def main(
     grid_size: int,
     obstacles: List[Obstacle],
@@ -345,7 +373,7 @@ def main(
     print("Total Nós visitados", len(explored))
 
     if best_path:
-        drone.path = best_path
+        drone.path = calculate_theta(best_path)
         print(drone)
         run_animation(
             screen,
