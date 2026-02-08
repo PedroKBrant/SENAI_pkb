@@ -53,8 +53,8 @@ class Node:
         return f"Node(pos={self.position.x, self.position.y, self.position.theta}, f={self.f:}, g={self.g:}, h={self.h:})"
 
 
-def calculate_heuristic(curr: Position, goal: Position, method: str ="octile") -> int:
-    #https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
+def calculate_heuristic(curr: Position, goal: Position, method: str = "octile") -> int:
+    # https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
     dx = abs(curr.x - goal.x)
     dy = abs(curr.y - goal.y)
     if method == "octile":
@@ -63,6 +63,7 @@ def calculate_heuristic(curr: Position, goal: Position, method: str ="octile") -
     else:
         # Integer Euclidean:
         return int(sqrt(dx**2 + dy**2) * 1000)
+
 
 def get_valid_neighbors(current_pos: Node, blocked_tiles: set) -> List[Node]:
     neighbors = []
@@ -90,7 +91,10 @@ def reconstruct_path(goal: Node) -> List[Node]:
 
 
 def a_star(
-    initial_position: Position, blocked_tiles: set, goal_position: Position, heuristic_method: str = "octile"
+    initial_position: Position,
+    blocked_tiles: set,
+    goal_position: Position,
+    heuristic_method: str = "octile",
 ) -> Tuple[List[Node], List[tuple]]:
     initial_node = Node(initial_position)
     initial_node.g = 0
@@ -162,9 +166,13 @@ class Drone:
 
     def __repr__(self) -> str:
         if not self.path:
-            return f"Drone at ({self.position.x}, {self.position.y}) - No path assigned."
+            return (
+                f"Drone at ({self.position.x}, {self.position.y}) - No path assigned."
+            )
 
-        detailed_nodes = "\n".join([f"  Step {i}: {node}" for i, node in enumerate(self.path)])
+        detailed_nodes = "\n".join(
+            [f"  Step {i}: {node}" for i, node in enumerate(self.path)]
+        )
         summary = f"Drone Path [{len(self.path)} steps]:"
         return f"{summary}\n{detailed_nodes}"
 
@@ -315,7 +323,7 @@ def main(
     initial_position: Position,
     goal: Position,
     no_anim: bool = False,
-    heuristic: str = "octile"
+    heuristic: str = "octile",
 ) -> None:
     global GRID_SIZE, CELL_SIZE, SCREEN_SIZE
     GRID_SIZE = grid_size
@@ -335,7 +343,7 @@ def main(
     best_path, explored = a_star(initial_position, blocked_tiles, goal, heuristic)
     print("Explored Nodes:", explored)
     print("Total Nós visitados", len(explored))
-    
+
     if best_path:
         drone.path = best_path
         print(drone)
