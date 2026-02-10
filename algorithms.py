@@ -97,37 +97,13 @@ def get_catmull_rom_point(
     return (x, y)
 
 
-def get_catmull_rom_point(
-    p0: Tuple[float, float],
-    p1: Tuple[float, float],
-    p2: Tuple[float, float],
-    p3: Tuple[float, float],
-    t: float,
-) -> Tuple[float, float]:
-    """
-    Calculates the (x, y) position for a point 't' between p1 and p2.
-    """
-    t2 = t * t
-    t3 = t2 * t
-
-    f1 = -0.5 * t3 + t2 - 0.5 * t
-    f2 = 1.5 * t3 - 2.5 * t2 + 1.0
-    f3 = -1.5 * t3 + 2.0 * t2 + 0.5 * t
-    f4 = 0.5 * t3 - 0.5 * t2
-
-    x = p0[0] * f1 + p1[0] * f2 + p2[0] * f3 + p3[0] * f4
-    y = p0[1] * f1 + p1[1] * f2 + p2[1] * f3 + p3[1] * f4
-
-    return (x, y)
-
-
 def generate_smooth_path(path: List[Node], points_per_segment: int = 20) -> List[Node]:
     if len(path) < 2:
         return path
 
-    coords = [(float(n.position.x), float(n.position.y)) for n in path]
-    f_values = [n.f for n in path]
+    coords = [(n.position.x, n.position.y) for n in path]
 
+    # duplicate first and last point
     coords.insert(0, coords[0])
     coords.append(coords[-1])
 
@@ -145,6 +121,7 @@ def generate_smooth_path(path: List[Node], points_per_segment: int = 20) -> List
             x, y = get_catmull_rom_point(p0, p1, p2, p3, t)
 
             new_node = Node(position=Position(x=x, y=y))
+            # also interpolates g and h for log purposes
             new_node.g = int(g_start + (g_end - g_start) * t)
             new_node.h = int(h_start + (h_end - h_start) * t)
 

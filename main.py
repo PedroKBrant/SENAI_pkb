@@ -43,7 +43,7 @@ def run_animation(
             anim_timer = curr_time
 
         elif drone_idx < len(smooth_path):
-            if curr_time - move_timer > 40:
+            if curr_time - move_timer > 20:
                 drone.position = smooth_path[drone_idx].position
                 drone_idx += 1
                 move_timer = curr_time
@@ -89,7 +89,8 @@ def main(
         print("-" * 30)
         print(f"DRONE MISSION SUMMARY")
         print("-" * 30)
-        print(f"Total Trajectory Steps: {total_steps}")
+        print(f"Total Tiles Explored: {len(explored)}")
+        print(f"Trajectory Steps: {total_steps}")
         print(f"Path Tiles: {tiles_visited}")
         print("-" * 30)
         print(drone.get_summary_string(points_per_segment // 3))

@@ -18,6 +18,7 @@ class Drone:
         base_points = [(0, -size), (-size // 1.2, size), (size // 1.2, size)]
         rad = math.radians(self.position.theta + 90)
         cos_a, sin_a = math.cos(rad), math.sin(rad)
+        # rotation matrix
         return [
             (cx + (p[0] * cos_a - p[1] * sin_a), cy + (p[0] * sin_a + p[1] * cos_a))
             for p in base_points
@@ -29,11 +30,11 @@ class Drone:
         nodes = "\n".join([f" Step {i}: {n}" for i, n in enumerate(self.path)])
         return f"Drone Path [{len(self.path)} steps]:\n{nodes}"
 
-    def get_summary_path(self, step_size: int):
+    def _get_summary_path(self, step_size: int):
         return self.path[::step_size]
 
     def get_summary_string(self, step_size: int) -> str:
-        summary_nodes = self.get_summary_path(step_size)
+        summary_nodes = self._get_summary_path(step_size)
         detailed_nodes = "\n".join(
             [f"  Waypoint {i}: {node}" for i, node in enumerate(summary_nodes)]
         )
@@ -42,10 +43,7 @@ class Drone:
     def get_path_statistics(smooth_path: List[Node]):
         total_steps = len(smooth_path)
         unique_tiles = list(
-            {
-                (int(round(n.position.x)), int(round(n.position.y))): None
-                for n in smooth_path
-            }.keys()
+            {(n.position.x, n.position.y): None for n in smooth_path}.keys()
         )
         return total_steps, unique_tiles
 
